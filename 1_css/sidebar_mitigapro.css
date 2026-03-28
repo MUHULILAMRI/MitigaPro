@@ -1,0 +1,180 @@
+/* =========================================================
+   sidebar_mitigapro.css — Sidebar Admin MitigaPro
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* ── Sidebar ──────────────────────────────────────────── */
+.sidebar {
+    width: 260px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: linear-gradient(180deg, #1a1f3c 0%, #1e3c72 60%, #2a5298 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    z-index: 900;
+    transition: width 0.3s ease;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    font-family: 'Poppins', sans-serif;
+}
+
+.sidebar.collapsed { width: 72px; }
+
+/* ── Sidebar Header ───────────────────────────────────── */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    min-height: 64px;
+}
+
+.sidebar-logo { font-size: 28px; flex-shrink: 0; }
+
+.sidebar-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.25s;
+}
+
+.sidebar-toggle {
+    margin-left: auto;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 18px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+.sidebar-toggle:hover { background: rgba(255,255,255,0.22); }
+
+/* ── User Info ────────────────────────────────────────── */
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.sidebar-avatar {
+    font-size: 26px;
+    flex-shrink: 0;
+    width: 36px;
+    text-align: center;
+}
+
+.sidebar-user-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: opacity 0.25s;
+}
+
+.sidebar-username {
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-role {
+    font-size: 11px;
+    color: rgba(255,255,255,0.55);
+}
+
+/* ── Nav ──────────────────────────────────────────────── */
+.sidebar-nav { flex: 1; padding: 10px 0; }
+.sidebar-nav ul { list-style: none; margin: 0; padding: 0; }
+
+.nav-section {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    padding: 16px 20px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.25s;
+}
+
+.sidebar-nav li a {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 20px;
+    color: rgba(255,255,255,0.78);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s, padding 0.3s;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.sidebar-nav li a:hover,
+.sidebar-nav li a.active {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    padding-left: 26px;
+}
+
+.sb-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
+.sidebar-logo-img { width: 24px; height: 24px; max-width: 24px; max-height: 24px; object-fit: contain; flex-shrink: 0; }
+.sb-label { transition: opacity 0.25s; }
+
+/* ── Collapsed State ──────────────────────────────────── */
+.sidebar.collapsed .sidebar-title,
+.sidebar.collapsed .sidebar-user-info,
+.sidebar.collapsed .nav-section,
+.sidebar.collapsed .sb-label {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.sidebar.collapsed .sidebar-nav li a {
+    padding: 12px;
+    justify-content: center;
+}
+.sidebar.collapsed .sidebar-nav li a:hover { padding: 12px; }
+
+/* ── Main Content Area (companion) ───────────────────── */
+.main-content {
+    margin-left: 260px;
+    padding: 36px 40px;
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+}
+
+.main-content.expanded { margin-left: 72px; }
+
+.page-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1e3c72;
+    margin: 0 0 8px;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 768px) {
+    .sidebar { width: 72px; }
+    .sidebar-title, .sidebar-user-info, .nav-section, .sb-label { opacity: 0; width: 0; overflow: hidden; }
+    .sidebar-nav li a { padding: 12px; justify-content: center; }
+    .main-content { margin-left: 72px; padding: 20px; }
+}

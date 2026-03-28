@@ -1,0 +1,232 @@
+/* =========================================================
+   pengajar_view.css — Halaman Detail Profil Pengajar
+   MitigaPro
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #f5f7fb;
+    margin: 0;
+    color: #1a2744;
+}
+
+/* ── Profile Container ────────────────────────────────── */
+.profile-container {
+    max-width: 1000px;
+    margin: 30px auto;
+    padding: 0 20px 60px;
+}
+
+/* ── Profile Header Card ──────────────────────────────── */
+.profile-header {
+    background: linear-gradient(135deg, #1a2744 0%, #2c5282 100%);
+    border-radius: 20px;
+    padding: 36px 40px;
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    box-shadow: 0 8px 30px rgba(30, 60, 114, 0.3);
+    margin-bottom: 32px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+}
+.profile-header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 50%;
+}
+
+/* ── Photo ────────────────────────────────────────────── */
+.photo-section img {
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid rgba(255,255,255,0.5);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    flex-shrink: 0;
+}
+
+/* ── Name & Info ──────────────────────────────────────── */
+.info-section h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0 0 6px;
+}
+.info-section p {
+    margin: 0 0 12px;
+    font-size: 14px;
+    color: rgba(255,255,255,0.82);
+}
+
+.status {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.status.aktif    { background: #e6f4ea; color: #2e7d32; }
+.status.nonaktif { background: #fdecea; color: #c62828; }
+
+/* ── Content Cards ────────────────────────────────────── */
+.profile-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 768px) {
+    .profile-content { grid-template-columns: 1fr; }
+    .profile-header   { flex-direction: column; text-align: center; }
+}
+
+.card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    animation: fadeUp 0.4s ease;
+}
+.card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a2744;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 20px;
+}
+.grid p { margin: 0; font-size: 14px; color: #444; }
+.grid strong { color: #1a2744; }
+
+/* ── Action Buttons ───────────────────────────────────── */
+.action-buttons {
+    margin-top: 28px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+.action-buttons a, .action-buttons button {
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.action-buttons a:hover, .action-buttons button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+}
+.btn-back   { background: #6c757d; color: #fff; }
+.btn-edit   { background: #f1c40f; color: #000; }
+.btn-pdf    { background: #1a2744; color: #fff; }
+.btn-delete { background: #e74c3c; color: #fff; }
+
+/* ── Animations ───────────────────────────────────────── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Button Group ─────────────────────────────────────── */
+.button-group {
+    grid-column: span 2;
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+.btn-primary, .btn-secondary {
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s;
+}
+.btn-primary { background: #3b82f6; color: #fff; }
+.btn-secondary { background: #f1f5f9; color: #1a2744; border: 1px solid #e2e8f0; }
+.btn-primary:hover, .btn-secondary:hover { opacity: 0.85; }
+
+/* ── Download Section ─────────────────────────────────── */
+.download-section {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    margin-top: 28px;
+    animation: fadeUp 0.5s ease;
+}
+.download-section h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1a2744;
+    margin: 0 0 18px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+}
+.download-section .form-group {
+    margin-bottom: 14px;
+}
+.download-section label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a2744;
+    margin-bottom: 4px;
+}
+.download-section input[type="text"] {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Poppins', sans-serif;
+    transition: border-color 0.2s;
+}
+.download-section input[type="text"]:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+.download-section .submit {
+    padding: 10px 24px;
+    background: #e74c3c;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s;
+}
+.download-section .submit:hover {
+    opacity: 0.85;
+}
+
+@media (max-width: 768px) {
+    .button-group { grid-column: span 1; }
+}

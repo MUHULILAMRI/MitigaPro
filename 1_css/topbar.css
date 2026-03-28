@@ -1,0 +1,103 @@
+/* =========================================================
+   topbar.css — Navigasi Atas (Pengajar Module)
+   MitigaPro | Bapekom PU VIII Makassar
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* ── Reset & Base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Topbar Container ─────────────────────────────────── */
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+    color: #fff;
+    padding: 0 30px;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    font-family: 'Poppins', sans-serif;
+    gap: 16px;
+}
+
+/* ── Brand / Logo ─────────────────────────────────────── */
+.topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: #fff;
+    white-space: nowrap;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.3px;
+    transition: opacity 0.2s;
+}
+.topbar-brand:hover { opacity: 0.85; }
+.brand-icon { font-size: 22px; }
+.brand-text { display: inline; }
+
+/* ── Center Nav Links ─────────────────────────────────── */
+.topbar-center {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.topbar-center a {
+    color: rgba(255,255,255,0.88);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
+}
+.topbar-center a:hover,
+.topbar-center a.active {
+    background: rgba(255,255,255,0.18);
+    color: #fff;
+}
+
+/* ── Right Section ────────────────────────────────────── */
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    white-space: nowrap;
+}
+
+.topbar-user {
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+}
+.topbar-user strong { color: #fff; }
+
+.btn-logout {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 7px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.25s, border-color 0.25s;
+}
+.btn-logout:hover {
+    background: rgba(255,255,255,0.28);
+    border-color: rgba(255,255,255,0.55);
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 768px) {
+    .topbar { padding: 0 16px; height: 56px; }
+    .topbar-center { display: none; }
+    .brand-text { font-size: 13px; }
+    .topbar-user { display: none; }
+}
