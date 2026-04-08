@@ -5,6 +5,7 @@ if (!isset($_SESSION['role'])) {
     header('Location: ' . BASE_URL . 'login.php');
     exit;
 }
+require_role('admin');
 
 require INCLUDE_PATH . 'sidebar_pengajar.php';
 

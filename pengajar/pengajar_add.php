@@ -7,8 +7,6 @@ if (!isset($_SESSION['user_id'])) {
 }
 require_role('admin');
 
-require INCLUDE_PATH . 'sidebar_pengajar.php';
-
 $error_nip = "";
 $errors    = [];
 
@@ -31,6 +29,11 @@ if (isset($_POST['simpan'])) {
     $golongan   = $golongan ?: null;
     $status     = $_POST['status'] ?? 'aktif';
 
+    // ── Data akun login ─────────────────────────────────────
+    $buat_akun  = isset($_POST['buat_akun']);
+    $akun_user  = trim($_POST['akun_username'] ?? '');
+    $akun_pass  = $_POST['akun_password'] ?? '';
+
     // ── Validasi wajib ──────────────────────────────────────
     if ($nip === '')        $errors[] = "NIP wajib diisi.";
     if ($nama === '')       $errors[] = "Nama Lengkap wajib diisi.";
@@ -45,6 +48,21 @@ if (isset($_POST['simpan'])) {
     if ($unit === '')       $errors[] = "Unit Kerja wajib diisi.";
     if ($instansi === '')   $errors[] = "Instansi wajib diisi.";
     if ($alamat === '')     $errors[] = "Alamat Kantor wajib diisi.";
+
+    // Validasi akun login
+    if ($buat_akun) {
+        if ($akun_user === '') $errors[] = "Username akun wajib diisi.";
+        if (strlen($akun_pass) < 6) $errors[] = "Password minimal 6 karakter.";
+        if ($akun_user !== '') {
+            $cek_user = $conn->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+            $cek_user->bind_param("s", $akun_user);
+            $cek_user->execute();
+            $cek_user->bind_result($jml_user);
+            $cek_user->fetch();
+            $cek_user->close();
+            if ($jml_user > 0) $errors[] = "Username '$akun_user' sudah digunakan.";
+        }
+    }
 
     if (empty($errors)) {
         // Cek NIP duplikat
@@ -92,6 +110,16 @@ if (isset($_POST['simpan'])) {
 
                     if ($stmt->execute()) {
                         $stmt->close();
+
+                        // Buat akun login jika diminta
+                        if ($buat_akun && $akun_user !== '' && $akun_pass !== '') {
+                            $hash = password_hash($akun_pass, PASSWORD_DEFAULT);
+                            $st2 = $conn->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, 'pengajar')");
+                            $st2->bind_param("ss", $akun_user, $hash);
+                            $st2->execute();
+                            $st2->close();
+                        }
+
                         header("Location: pengajar.php?success=1");
                         exit;
                     } else {
@@ -114,7 +142,7 @@ if (isset($_POST['simpan'])) {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="<?= BASE_URL ?>1_css/sidebar_pengajar.css">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; }
 
 :root {
   --navy:   #0d1f4e;
@@ -133,54 +161,18 @@ if (isset($_POST['simpan'])) {
 
 body {
   font-family: 'Poppins', sans-serif;
-  background: linear-gradient(160deg, #e8efff 0%, #f4f8ff 60%, #eaf3ff 100%);
+  background: #f5f7fb;
   min-height: 100vh;
   color: var(--navy);
-  padding: 0 0 60px;
-  animation: pageIn 0.5s ease both;
+  margin: 0;
+  padding: 0;
 }
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-body.leaving {
-  animation: pageOut 0.3s ease both;
-  pointer-events: none;
-}
-@keyframes pageOut {
-  to { opacity: 0; transform: translateY(-10px); }
-}
-
-/* â•â•â• TOPBAR â•â•â• */
-.page-topbar {
-  background: linear-gradient(90deg, var(--navy), var(--blue));
-  padding: 16px 40px;
-  display: flex; align-items: center; justify-content: space-between;
-  position: sticky; top: 0; z-index: 100;
-  box-shadow: 0 4px 20px rgba(13,31,78,0.25);
-}
-.page-topbar .brand {
-  display: flex; align-items: center; gap: 12px;
-  color: #fff; font-weight: 700; font-size: 16px;
-  text-decoration: none;
-}
-.topbar-actions { display: flex; gap: 10px; }
-.tb-btn {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 18px; border-radius: 10px;
-  font-size: 13px; font-weight: 600; font-family: 'Poppins', sans-serif;
-  border: none; cursor: pointer; text-decoration: none;
-  transition: transform 0.2s, opacity 0.2s;
-}
-.tb-btn:hover { transform: translateY(-1px); opacity: 0.9; }
-.tb-back { background: rgba(255,255,255,0.15); color: #fff; }
-.tb-exit { background: rgba(239,68,68,0.2); color: #fca5a5; }
 
 /* â•â•â• WRAPPER â•â•â• */
 .wrap {
   max-width: 1000px;
-  margin: 40px auto;
-  padding: 0 20px;
+  margin: 0 auto;
+  padding: 30px 24px 60px;
 }
 
 /* â•â•â• PAGE HEADER â•â•â• */
@@ -403,6 +395,8 @@ body.leaving {
 </style>
 </head>
 <body>
+
+<?php require INCLUDE_PATH . 'sidebar_pengajar.php'; ?>
 
 <div id="mainContent" class="main-content">
 
@@ -652,11 +646,61 @@ body.leaving {
         </div>
       </div>
     </div>
+    <!-- â•â• CARD 4: Akun Login â•â• -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon"><i class="fas fa-key"></i></div>
+        <h2>Akun Login Pengajar</h2>
+      </div>
+      <div class="card-body">
+        <div class="fg" style="margin-bottom:16px">
+          <label style="cursor:pointer;font-size:14px;font-weight:600;color:var(--navy);gap:10px">
+            <input type="checkbox" name="buat_akun" id="chkBuatAkun" value="1" <?= isset($_POST['buat_akun']) ? 'checked' : '' ?> style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;vertical-align:middle">
+            Buatkan akun login untuk pengajar ini
+          </label>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">
+            <i class="fas fa-info-circle"></i> Jika dicentang, pengajar akan bisa login ke sistem dengan username &amp; password yang ditentukan.
+          </div>
+        </div>
 
+        <div id="akunFields" style="display:<?= isset($_POST['buat_akun']) ? 'block' : 'none' ?>">
+          <div class="form-grid">
+            <div class="fg">
+              <label><i class="fas fa-user"></i> Username <span class="req">*</span></label>
+              <input type="text" name="akun_username" id="akunUsername"
+                placeholder="Username untuk login"
+                value="<?= htmlspecialchars($_POST['akun_username'] ?? '') ?>"
+                autocomplete="off">
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">
+                <i class="fas fa-lightbulb"></i> Bisa menggunakan NIP atau nama singkat
+              </div>
+            </div>
+            <div class="fg">
+              <label><i class="fas fa-lock"></i> Password <span class="req">*</span></label>
+              <div style="position:relative">
+                <input type="password" name="akun_password" id="akunPassword"
+                  placeholder="Minimal 6 karakter"
+                  autocomplete="new-password"
+                  style="padding-right:42px">
+                <button type="button" id="togglePass" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px" title="Tampilkan password">
+                  <i class="fas fa-eye"></i>
+                </button>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">
+                <i class="fas fa-lightbulb"></i> Pengajar bisa mengubah password setelah login
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding:12px 16px;background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe;font-size:12px;color:#1e40af">
+            <i class="fas fa-shield-alt"></i> <strong>Penting:</strong> Catat username &amp; password ini lalu berikan kepada pengajar. Password tidak dapat dilihat kembali setelah disimpan.
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- â•â• ACTION BAR â•â• -->
     <div class="action-bar">
       <div class="action-left">
-        <button type="button" class="btn btn-back" onclick="leavePage(null, 'pengajar.php')">
+        <button type="button" class="btn btn-back" onclick="window.location.href='pengajar.php'">
           <i class="fas fa-arrow-left"></i> Kembali
         </button>
         <button type="reset" class="btn btn-reset" onclick="resetForm()">
@@ -664,7 +708,7 @@ body.leaving {
         </button>
       </div>
       <div class="action-right">
-        <a href="pengajar.php" class="btn btn-cancel" onclick="leavePage(event, 'pengajar.php')">
+        <a href="pengajar.php" class="btn btn-cancel">
           <i class="fas fa-times"></i> Batal
         </a>
         <button type="submit" name="simpan" class="btn btn-save" id="btnSimpan">
@@ -677,17 +721,8 @@ body.leaving {
 </div>
 
 <script>
-/* â”€â”€ Page Transition â”€â”€ */
-function leavePage(e, href) {
-  if (e) e.preventDefault();
-  document.body.classList.add('leaving');
-  setTimeout(() => { window.location.href = href; }, 280);
-}
 
-document.getElementById('btnKeluar').addEventListener('click', function(e) {
-  e.preventDefault();
-  if (confirm('Yakin ingin keluar dari sistem?')) leavePage(null, this.href);
-});
+
 
 /* â”€â”€ Foto Preview â”€â”€ */
 document.getElementById('fotoInput').addEventListener('change', function () {
@@ -746,11 +781,40 @@ nipInput.addEventListener('input', function () {
 /* ── Submit loading ── */
 document.getElementById('formPengajar').addEventListener('submit', function () {
   const btn = document.getElementById('btnSimpan');
-  // Delay disable so the button value is already included in POST
   setTimeout(() => {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
     btn.disabled = true;
   }, 10);
+});
+
+/* ── Toggle akun login fields ── */
+document.getElementById('chkBuatAkun').addEventListener('change', function () {
+  document.getElementById('akunFields').style.display = this.checked ? 'block' : 'none';
+  if (!this.checked) {
+    document.getElementById('akunUsername').value = '';
+    document.getElementById('akunPassword').value = '';
+  }
+});
+
+/* ── Auto-fill username dari NIP ── */
+document.getElementById('nipInput').addEventListener('blur', function () {
+  const akunUser = document.getElementById('akunUsername');
+  if (akunUser && akunUser.value === '' && this.value.trim() !== '') {
+    akunUser.value = this.value.trim();
+  }
+});
+
+/* ── Toggle password visibility ── */
+document.getElementById('togglePass').addEventListener('click', function () {
+  const inp = document.getElementById('akunPassword');
+  const icon = this.querySelector('i');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    icon.classList.replace('fa-eye', 'fa-eye-slash');
+  } else {
+    inp.type = 'password';
+    icon.classList.replace('fa-eye-slash', 'fa-eye');
+  }
 });
 </script>
 </div><!-- /main-content -->

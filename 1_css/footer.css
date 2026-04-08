@@ -2,12 +2,14 @@
    footer.css — Footer Umum MitigaPro
    ========================================================= */
 
+html, body { height: 100%; }
+
 .main-footer {
     background: linear-gradient(90deg, #1e3c72, #2a5298);
     color: rgba(255, 255, 255, 0.85);
     text-align: center;
     padding: 22px 30px;
-    margin-top: 60px;
+    margin-top: auto;
     font-family: 'Poppins', sans-serif;
     font-size: 13px;
 }

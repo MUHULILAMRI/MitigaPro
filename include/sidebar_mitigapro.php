@@ -37,6 +37,7 @@ function sb_link(string $href, string $icon, string $label, string $page, string
             <li class="nav-section">Menu Utama</li>
             <?= sb_link(BASE_URL . 'mitigapro/admin/db_mitigapro.php',  '<i class="fas fa-tachometer-alt"></i>', 'Dashboard',       $_current_page, 'db_mitigapro') ?>
             <?= sb_link(BASE_URL . 'mitigapro/admin/belanja_modal.php', '<i class="fas fa-wallet"></i>', 'Belanja Modal',    $_current_page, 'belanja_modal') ?>
+            <?= sb_link(BASE_URL . 'mitigapro/admin/kelola_visitor.php','<i class="fas fa-desktop"></i>', 'Halaman Pengunjung', $_current_page, 'kelola_visitor') ?>
 
             <li class="nav-section">Manajemen</li>
             <?= sb_link(BASE_URL . 'mitigapro/admin/manage_users.php',  '<i class="fas fa-users"></i>', 'Kelola User',      $_current_page, 'manage_users') ?>

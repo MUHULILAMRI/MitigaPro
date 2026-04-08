@@ -32,6 +32,12 @@
     border-bottom: 1px solid rgba(255,255,255,0.1);
     min-height: 64px;
 }
+.sidebar-logos {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
 .sidebar-logo-img {
     width: 24px; height: 24px;
     max-width: 24px; max-height: 24px;
@@ -147,6 +153,8 @@
 .main-content {
     margin-left: 260px;
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     transition: margin-left 0.3s ease;
     font-family: 'Poppins', sans-serif;
 }

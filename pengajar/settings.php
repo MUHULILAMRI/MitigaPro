@@ -83,7 +83,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt->close();
         }
     }
+
+    // ── Simpan Informasi Sistem ──
+    if ($_POST['action'] === 'save_site_settings' && $_SESSION['role'] === 'admin') {
+        $fields = ['app_nama', 'app_versi', 'app_deskripsi', 'instansi', 'footer_text'];
+        $stmt = $conn->prepare("UPDATE site_settings SET nilai = ? WHERE kunci = ?");
+        foreach ($fields as $key) {
+            $val = trim($_POST[$key] ?? '');
+            if ($val !== '') {
+                $stmt->bind_param('ss', $val, $key);
+                $stmt->execute();
+            }
+        }
+        $stmt->close();
+        $msg = 'Informasi sistem berhasil diperbarui!'; $msg_type = 'ok';
+    }
 }
+
+// ── Ambil site_settings ──
+$site = [];
+$r = $conn->query("SELECT kunci, nilai FROM site_settings");
+if ($r) { while ($row = $r->fetch_assoc()) $site[$row['kunci']] = $row['nilai']; $r->free(); }
 
 $role_label = match ($user['role']) {
     'admin' => 'Administrator',
@@ -227,10 +247,65 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy)}
     <!-- Info Sistem -->
     <div class="card">
         <div class="card-title"><i class="fas fa-info-circle"></i> Informasi Sistem</div>
+
+        <?php if ($_SESSION['role'] === 'admin'): ?>
+        <form method="post">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="save_site_settings">
+            <div class="form-row">
+                <div class="fg">
+                    <label><i class="fas fa-cube"></i> Nama Aplikasi</label>
+                    <input type="text" name="app_nama" value="<?= htmlspecialchars($site['app_nama'] ?? 'MitigaPro') ?>" required>
+                </div>
+                <div class="fg">
+                    <label><i class="fas fa-code-branch"></i> Versi</label>
+                    <input type="text" name="app_versi" value="<?= htmlspecialchars($site['app_versi'] ?? 'v1.0') ?>" required>
+                </div>
+            </div>
+            <div class="fg" style="margin-bottom:16px">
+                <label><i class="fas fa-align-left"></i> Deskripsi Aplikasi</label>
+                <input type="text" name="app_deskripsi" value="<?= htmlspecialchars($site['app_deskripsi'] ?? '') ?>">
+            </div>
+            <div class="fg" style="margin-bottom:16px">
+                <label><i class="fas fa-building-columns"></i> Nama Instansi</label>
+                <input type="text" name="instansi" value="<?= htmlspecialchars($site['instansi'] ?? '') ?>">
+            </div>
+            <div class="fg" style="margin-bottom:16px">
+                <label><i class="fas fa-copyright"></i> Teks Footer</label>
+                <input type="text" name="footer_text" value="<?= htmlspecialchars($site['footer_text'] ?? '') ?>">
+            </div>
+            <div class="form-row">
+                <div class="fg">
+                    <label><i class="fas fa-user-shield"></i> Role Akun</label>
+                    <input type="text" value="<?= $role_label ?>" readonly style="background:#f1f5f9;cursor:default">
+                </div>
+                <div class="fg">
+                    <label><i class="fas fa-calendar-alt"></i> Terdaftar Sejak</label>
+                    <input type="text" value="<?= $joined ?>" readonly style="background:#f1f5f9;cursor:default">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="fg">
+                    <label><i class="fas fa-server"></i> Server</label>
+                    <input type="text" value="<?= htmlspecialchars($_SERVER['SERVER_SOFTWARE'] ?? 'N/A') ?>" readonly style="background:#f1f5f9;cursor:default">
+                </div>
+                <div class="fg">
+                    <label><i class="fab fa-php"></i> PHP Version</label>
+                    <input type="text" value="<?= phpversion() ?>" readonly style="background:#f1f5f9;cursor:default">
+                </div>
+            </div>
+            <div style="margin-top:16px">
+                <button type="submit" class="btn-primary" style="display:inline-flex;align-items:center;gap:8px;background:#3b82f6;color:#fff;border:none;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Poppins',sans-serif;transition:background 0.2s">
+                    <i class="fas fa-save"></i> Simpan Informasi Sistem
+                </button>
+            </div>
+        </form>
+
+        <?php else: ?>
         <div class="form-row">
             <div class="fg">
                 <label>Aplikasi</label>
-                <input type="text" value="MitigaPro v1.0" readonly>
+                <input type="text" value="<?= htmlspecialchars(($site['app_nama'] ?? 'MitigaPro') . ' ' . ($site['app_versi'] ?? 'v1.0')) ?>" readonly>
             </div>
             <div class="fg">
                 <label>Role Akun</label>
@@ -247,6 +322,22 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy)}
                 <input type="text" value="<?= phpversion() ?>" readonly>
             </div>
         </div>
+        <?php endif; ?>
+
+        <?php if ($_SESSION['role'] === 'admin'): ?>
+        <div style="margin-top:18px;padding-top:18px;border-top:1px solid #e2e8f0">
+            <label style="display:block;font-size:12px;font-weight:600;color:#1a2744;margin-bottom:10px">
+                <i class="fas fa-desktop"></i> Kelola Halaman Pengunjung
+            </label>
+            <p style="font-size:12px;color:#94a3b8;margin-bottom:12px;line-height:1.7">
+                Atur semua konten yang tampil di halaman pengunjung: kata sambutan, profil balai, struktur organisasi, FAQ, kontak, media sosial, tautan terkait, dan galeri kegiatan.
+            </p>
+            <a href="<?= BASE_URL ?>mitigapro/admin/kelola_visitor.php" 
+               style="display:inline-flex;align-items:center;gap:8px;background:#3b82f6;color:#fff;padding:10px 22px;border-radius:10px;font-size:12px;font-weight:600;text-decoration:none;transition:background 0.2s;font-family:'Poppins',sans-serif">
+                <i class="fas fa-external-link-alt"></i> Buka Kelola Halaman Pengunjung
+            </a>
+        </div>
+        <?php endif; ?>
     </div>
 
 </div>

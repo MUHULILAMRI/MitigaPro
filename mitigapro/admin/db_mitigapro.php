@@ -47,6 +47,51 @@ $aq3 = $conn->query("SELECT 'pelatihan' as tipe, jenis_pelatihan as judul, CONCA
 while ($a = $aq3->fetch_assoc()) $activities[] = $a;
 usort($activities, fn($a,$b) => strtotime($b['created_at']) - strtotime($a['created_at']));
 $activities = array_slice($activities, 0, 6);
+
+// ── Pelatihan per tahun (line chart) ───────────────────────
+$tahun_labels = []; $tahun_counts = [];
+$tq = $conn->query("SELECT tahun, COUNT(*) cnt FROM identifikasi_pelatihan GROUP BY tahun ORDER BY tahun ASC");
+while ($tr = $tq->fetch_assoc()) {
+    $tahun_labels[] = (string)$tr['tahun'];
+    $tahun_counts[] = (int)$tr['cnt'];
+}
+
+// ── Top 10 jenis pelatihan ─────────────────────────────────
+$top_pelatihan_labels = []; $top_pelatihan_counts = [];
+$tpq = $conn->query("SELECT jenis_pelatihan, COUNT(*) cnt FROM identifikasi_pelatihan GROUP BY jenis_pelatihan ORDER BY cnt DESC LIMIT 10");
+while ($tp = $tpq->fetch_assoc()) {
+    $top_pelatihan_labels[] = mb_strimwidth($tp['jenis_pelatihan'], 0, 30, '...');
+    $top_pelatihan_counts[] = (int)$tp['cnt'];
+}
+
+// ── Pengajar per pendidikan ────────────────────────────────
+$pendidikan_labels = []; $pendidikan_counts = [];
+$pq = $conn->query("SELECT pendidikan_terakhir, COUNT(*) cnt FROM pengajar GROUP BY pendidikan_terakhir ORDER BY cnt DESC");
+while ($pr = $pq->fetch_assoc()) {
+    $pendidikan_labels[] = $pr['pendidikan_terakhir'];
+    $pendidikan_counts[] = (int)$pr['cnt'];
+}
+
+// ── Pengajar per jenis kelamin ─────────────────────────────
+$gender_labels = []; $gender_counts = [];
+$gq = $conn->query("SELECT jenis_kelamin, COUNT(*) cnt FROM pengajar GROUP BY jenis_kelamin");
+while ($gr = $gq->fetch_assoc()) {
+    $gender_labels[] = $gr['jenis_kelamin'];
+    $gender_counts[] = (int)$gr['cnt'];
+}
+
+// ── Pelatihan per wilayah ──────────────────────────────────
+$pel_wil_labels = []; $pel_wil_counts = [];
+$pwq = $conn->query("SELECT w.nama_wilayah, COUNT(ip.id) cnt FROM wilayah w LEFT JOIN dinas d ON d.wilayah_id=w.id LEFT JOIN identifikasi_pelatihan ip ON ip.dinas_id=d.id GROUP BY w.id ORDER BY cnt DESC");
+while ($pw = $pwq->fetch_assoc()) {
+    $short = str_replace(['Wilayah Kerja ','Sulawesi '], ['','Sul. '], $pw['nama_wilayah']);
+    $pel_wil_labels[] = $short;
+    $pel_wil_counts[] = (int)$pw['cnt'];
+}
+
+// ── Berita terbaru ─────────────────────────────────────────
+$stat_berita = $conn->query("SELECT COUNT(*) c FROM berita_pelatihan")->fetch_assoc()['c'] ?? 0;
+$recent_berita = $conn->query("SELECT id, judul, kategori, created_at FROM berita_pelatihan ORDER BY created_at DESC LIMIT 5");
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -417,6 +462,14 @@ body {
         <div class="stat-sub">Administrator</div>
       </div>
     </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#fdf4ff;color:#d946ef"><i class="fas fa-newspaper"></i></div>
+      <div class="stat-info">
+        <div class="stat-num"><?= $stat_berita ?></div>
+        <div class="stat-label">Berita</div>
+        <div class="stat-sub">Pelatihan</div>
+      </div>
+    </div>
   </div>
 
   <!-- ── Quick Actions ── -->
@@ -487,6 +540,68 @@ body {
             </div>
             <div class="progress-bar">
               <div class="progress-fill" style="width:<?= $stat_pengajar > 0 ? round($stat_nonaktif/$stat_pengajar*100) : 0 ?>%;background:var(--red)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Pelatihan Charts Row ── -->
+  <div class="section-title" style="margin-top:8px">Analitik Pelatihan</div>
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-chart-line"></i> Tren Pelatihan per Tahun</div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap-bar" style="height:260px">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-chart-bar"></i> Pelatihan per Wilayah</div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap-bar" style="height:260px">
+          <canvas id="pelWilChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Top Pelatihan + Pengajar Demographics ── -->
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-trophy"></i> Top Jenis Pelatihan</div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap-bar" style="height:280px">
+          <canvas id="topPelChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><i class="fas fa-user-graduate"></i> Demografi Pengajar</div>
+      </div>
+      <div class="panel-body">
+        <div class="grid-2" style="gap:16px;margin-bottom:0">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-align:center">Pendidikan</div>
+            <div class="chart-wrap" style="max-width:180px">
+              <canvas id="eduChart"></canvas>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-align:center">Jenis Kelamin</div>
+            <div class="chart-wrap" style="max-width:180px">
+              <canvas id="genderChart"></canvas>
             </div>
           </div>
         </div>
@@ -608,6 +723,39 @@ body {
       <!-- System Info -->
       <div class="panel">
         <div class="panel-header">
+          <div class="panel-title"><i class="fas fa-newspaper"></i> Berita Terbaru</div>
+          <a href="<?= BASE_URL ?>pengajar/kelola_berita.php" class="panel-link"><i class="fas fa-arrow-right"></i> Kelola</a>
+        </div>
+        <div class="panel-body" style="padding:8px 20px">
+          <?php if ($recent_berita && $recent_berita->num_rows > 0): ?>
+          <ul class="timeline">
+            <?php while ($b = $recent_berita->fetch_assoc()):
+              $badge_class = match($b['kategori'] ?? '') {
+                'Informasi' => 'badge-pengajar',
+                'Pengumuman' => 'si-orange',
+                'Jadwal' => 'badge-aktif',
+                default => 'badge-user',
+              };
+            ?>
+            <li class="tl-pengajar">
+              <div class="tl-icon" style="background:#fdf4ff;color:#d946ef"><i class="fas fa-newspaper"></i></div>
+              <div class="tl-text">
+                <div class="tl-title"><?= htmlspecialchars(mb_strimwidth($b['judul'], 0, 40, '...')) ?></div>
+                <div class="tl-detail"><span class="badge <?= $badge_class ?>"><?= htmlspecialchars($b['kategori'] ?: 'Umum') ?></span></div>
+              </div>
+              <div class="tl-time"><?= date('d M', strtotime($b['created_at'])) ?></div>
+            </li>
+            <?php endwhile; ?>
+          </ul>
+          <?php else: ?>
+            <div class="empty-state"><i class="fas fa-newspaper"></i><p>Belum ada berita.</p></div>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <!-- System Info -->
+      <div class="panel">
+        <div class="panel-header">
           <div class="panel-title"><i class="fas fa-server"></i> Info Sistem</div>
         </div>
         <div class="panel-body">
@@ -688,6 +836,129 @@ new Chart(document.getElementById('wilChart'), {
     plugins: {
       legend: { display: false },
       tooltip: { callbacks: { label: ctx => ` ${ctx.raw} dinas` } }
+    }
+  }
+});
+
+/* ── Line: Tren Pelatihan per Tahun ── */
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: <?= json_encode($tahun_labels) ?>,
+    datasets: [{
+      label: 'Jumlah Pelatihan',
+      data: <?= json_encode($tahun_counts) ?>,
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59,130,246,0.08)',
+      borderWidth: 3,
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#fff',
+      pointBorderColor: '#3b82f6',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 7
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Poppins', size: 11 } }, grid: { color: '#f1f5f9' } },
+      x: { ticks: { font: { family: 'Poppins', size: 11 } }, grid: { display: false } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw} pelatihan` } }
+    }
+  }
+});
+
+/* ── Bar: Pelatihan per Wilayah ── */
+new Chart(document.getElementById('pelWilChart'), {
+  type: 'bar',
+  data: {
+    labels: <?= json_encode($pel_wil_labels) ?>,
+    datasets: [{
+      label: 'Pelatihan',
+      data: <?= json_encode($pel_wil_counts) ?>,
+      backgroundColor: ['#8b5cf6','#3b82f6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899'],
+      borderRadius: 6,
+      barThickness: 28
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    scales: {
+      x: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Poppins', size: 11 } }, grid: { color: '#f1f5f9' } },
+      y: { ticks: { font: { family: 'Poppins', size: 10 } }, grid: { display: false } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw} pelatihan` } }
+    }
+  }
+});
+
+/* ── Horizontal Bar: Top Jenis Pelatihan ── */
+new Chart(document.getElementById('topPelChart'), {
+  type: 'bar',
+  data: {
+    labels: <?= json_encode($top_pelatihan_labels) ?>,
+    datasets: [{
+      label: 'Jumlah',
+      data: <?= json_encode($top_pelatihan_counts) ?>,
+      backgroundColor: '#3b82f6',
+      borderRadius: 4,
+      barThickness: 18
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: 'y',
+    scales: {
+      x: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Poppins', size: 10 } }, grid: { color: '#f1f5f9' } },
+      y: { ticks: { font: { family: 'Poppins', size: 10 } }, grid: { display: false } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw} kali` } }
+    }
+  }
+});
+
+/* ── Doughnut: Pendidikan Pengajar ── */
+new Chart(document.getElementById('eduChart'), {
+  type: 'doughnut',
+  data: {
+    labels: <?= json_encode($pendidikan_labels) ?>,
+    datasets: [{ data: <?= json_encode($pendidikan_counts) ?>, backgroundColor: ['#3b82f6','#8b5cf6','#22c55e','#f59e0b','#06b6d4','#ef4444','#ec4899','#14b8a6'], borderWidth: 0, hoverOffset: 6 }]
+  },
+  options: {
+    responsive: true,
+    cutout: '55%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'Poppins', size: 9 }, padding: 8, usePointStyle: true, pointStyleWidth: 6, boxWidth: 6 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } }
+    }
+  }
+});
+
+/* ── Pie: Gender Pengajar ── */
+new Chart(document.getElementById('genderChart'), {
+  type: 'pie',
+  data: {
+    labels: <?= json_encode($gender_labels) ?>,
+    datasets: [{ data: <?= json_encode($gender_counts) ?>, backgroundColor: ['#3b82f6','#ec4899'], borderWidth: 0, hoverOffset: 6 }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { family: 'Poppins', size: 9 }, padding: 8, usePointStyle: true, pointStyleWidth: 6, boxWidth: 6 } },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } }
     }
   }
 });

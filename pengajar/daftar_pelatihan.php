@@ -70,11 +70,13 @@ $q_wilayah = $conn->query("SELECT id, nama_wilayah FROM wilayah ORDER BY nama_wi
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--navy:#1a2744;--blue:#2c5282;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--bg:#f5f7fb;--white:#fff;--border:#e2e8f0;--muted:#64748b;--radius:12px}
+html,body{height:100%}
 body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy);margin:0}
+.main-content{display:flex;flex-direction:column;min-height:100vh}
 
-.container{max-width:1100px;margin:0 auto;padding:30px 24px 60px}
+.container{max-width:1100px;margin:0 auto;padding:30px 24px 60px;flex:1}
 
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.page-header{display:flex;flex-direction:column;align-items:flex-start;margin-bottom:20px;gap:12px}
 .page-header h1{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px}
 .page-header h1 i{color:var(--accent)}
 .page-header p{font-size:13px;color:var(--muted);margin-top:4px}
@@ -134,13 +136,8 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy);mar
   <?php endif; ?>
 
   <div class="page-header">
-    <div>
-      <h1><i class="fas fa-graduation-cap"></i> Daftar Pelatihan <span class="count-badge"><?= $q_data->num_rows ?></span></h1>
-      <p>Semua data identifikasi kebutuhan pelatihan</p>
-    </div>
-    <?php if ($role === 'admin'): ?>
-    <a href="tambah_pelatihan_baru.php" class="btn-add"><i class="fas fa-plus"></i> Tambah Pelatihan</a>
-    <?php endif; ?>
+    <h1><i class="fas fa-graduation-cap"></i> Daftar Pelatihan <span class="count-badge"><?= $q_data->num_rows ?></span></h1>
+    <p>Semua data identifikasi kebutuhan pelatihan</p>
   </div>
 
   <form class="filter-bar" method="GET">
@@ -162,6 +159,12 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy);mar
       <a href="daftar_pelatihan.php" class="btn-reset"><i class="fas fa-times"></i> Reset</a>
     <?php endif; ?>
   </form>
+
+  <?php if ($role === 'admin'): ?>
+  <div style="margin-bottom:16px">
+    <a href="tambah_pelatihan_baru.php" class="btn-add"><i class="fas fa-plus"></i> Tambah Pelatihan</a>
+  </div>
+  <?php endif; ?>
 
   <?php if ($q_data->num_rows > 0): ?>
   <div class="card">

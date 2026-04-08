@@ -1,10 +1,11 @@
   <?php
 require $_SERVER['DOCUMENT_ROOT'] . '/MitigaPro/include/autoload.php';
 
-  if (!isset($_SESSION['role'])) {
-      header("Location: login.php");
-      exit;
-  }
+if (!isset($_SESSION['role'])) {
+    header("Location: login.php");
+    exit;
+}
+require_role('admin');
 
   $role = $_SESSION['role'] ?? null;
 

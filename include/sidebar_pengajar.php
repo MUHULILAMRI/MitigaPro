@@ -23,9 +23,14 @@ function sb_plink(string $href, string $icon, string $label, string $page, strin
     </li>";
 }
 ?>
+<link rel="stylesheet" href="<?= BASE_URL ?>1_css/animations.css">
+<script src="<?= BASE_URL ?>1_css/page-transitions.js" defer></script>
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <img src="<?= BASE_URL ?>logo.png" alt="Logo" class="sidebar-logo-img">
+        <div class="sidebar-logos">
+            <img src="<?= BASE_URL ?>logo.png" alt="Logo PU" class="sidebar-logo-img">
+            <img src="<?= BASE_URL ?>logo_bpsdm.png" alt="Logo BPSDM" class="sidebar-logo-img">
+        </div>
         <span class="sidebar-title">MitigaPro</span>
         <button class="sidebar-toggle" id="sidebarToggle" title="Toggle">&#9776;</button>
     </div>
@@ -43,7 +48,7 @@ function sb_plink(string $href, string $icon, string $label, string $page, strin
             <li class="nav-section">Overview</li>
             <?= sb_plink(BASE_URL . 'pengajar/dashboard.php',  '<i class="fas fa-home"></i>',         'Dashboard',       $_sb_page, 'dashboard') ?>
 
-            <?php if ($_sb_role !== 'tamu'): ?>
+            <?php if ($_sb_role === 'admin'): ?>
             <li class="nav-section">Data</li>
             <?= sb_plink(BASE_URL . 'pengajar/pengajar.php',   '<i class="fas fa-user-tie"></i>',     'Data Pengajar',   $_sb_page, 'pengajar.php') ?>
             <?= sb_plink(BASE_URL . 'pengajar/dinas.php',       '<i class="fas fa-building"></i>',    'Data Dinas',      $_sb_page, 'dinas.php') ?>
@@ -51,12 +56,16 @@ function sb_plink(string $href, string $icon, string $label, string $page, strin
             <?= sb_plink(BASE_URL . 'pengajar/daftar_pelatihan.php', '<i class="fas fa-list-alt"></i>', 'Daftar Pelatihan', $_sb_page, 'daftar_pelatihan') ?>
             <?= sb_plink(BASE_URL . 'pengajar/berita_pelatihan.php', '<i class="fas fa-newspaper"></i>', 'Berita Pelatihan', $_sb_page, 'berita') ?>
 
-            <?php if ($_sb_role === 'admin'): ?>
             <li class="nav-section">Admin</li>
             <?= sb_plink(BASE_URL . 'pengajar/pengajar_add.php','<i class="fas fa-user-plus"></i>',   'Tambah Pengajar', $_sb_page, 'pengajar_add') ?>
             <?= sb_plink(BASE_URL . 'pengajar/tambah_pelatihan_baru.php', '<i class="fas fa-plus-circle"></i>', 'Tambah Pelatihan', $_sb_page, 'tambah_pelatihan_baru') ?>
             <?= sb_plink(BASE_URL . 'pengajar/kelola_berita.php', '<i class="fas fa-pen-nib"></i>', 'Kelola Berita', $_sb_page, 'kelola_berita') ?>
-            <?php endif; ?>
+            <?= sb_plink(BASE_URL . 'mitigapro/admin/kelola_visitor.php', '<i class="fas fa-desktop"></i>', 'Halaman Pengunjung', $_sb_page, 'kelola_visitor') ?>
+
+            <?php elseif ($_sb_role === 'pengajar'): ?>
+            <li class="nav-section">Pelatihan</li>
+            <?= sb_plink(BASE_URL . 'pengajar/daftar_pelatihan.php', '<i class="fas fa-list-alt"></i>', 'Daftar Pelatihan', $_sb_page, 'daftar_pelatihan') ?>
+            <?= sb_plink(BASE_URL . 'pengajar/berita_pelatihan.php', '<i class="fas fa-newspaper"></i>', 'Berita Pelatihan', $_sb_page, 'berita') ?>
 
             <li class="nav-section">Referensi</li>
             <?= sb_plink(BASE_URL . 'pengajar/dashboard.php#wilayah', '<i class="fas fa-map-marked-alt"></i>', 'Peta Wilayah', $_sb_page, '__none__') ?>
@@ -115,16 +124,5 @@ function sb_plink(string $href, string $icon, string $label, string $page, strin
             overlay.classList.remove('show');
         });
     }
-
-    // Loading on nav click
-    const loader = document.getElementById('sidebarLoading');
-    document.querySelectorAll('.sidebar-nav a:not([onclick])').forEach(function(link){
-        if(link.classList.contains('active')) return;
-        link.addEventListener('click',function(e){
-            e.preventDefault();
-            loader.style.display='flex';
-            setTimeout(function(){ window.location.href=link.href; },400);
-        });
-    });
 })();
 </script>

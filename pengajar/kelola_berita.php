@@ -50,7 +50,7 @@ $q_berita = $conn->query("
 :root{--navy:#1a2744;--blue:#2c5282;--accent:#3b82f6;--green:#22c55e;--red:#ef4444;--bg:#f5f7fb;--white:#fff;--border:#e2e8f0;--muted:#64748b;--radius:12px}
 body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy);margin:0}
 
-.container{max-width:1000px;margin:0 auto;padding:30px 24px 60px}
+.container{max-width:1000px;margin:0 auto;padding:30px 24px 60px;flex:1}
 
 .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
 .page-header h1{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px}

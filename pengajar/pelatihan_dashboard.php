@@ -5,6 +5,7 @@ if (!isset($_SESSION['role'])) {
     header('Location: ' . BASE_URL . 'login.php');
     exit;
 }
+require_role('admin');
 
 require INCLUDE_PATH . 'sidebar_pengajar.php';
 
@@ -210,7 +211,9 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy)}
         <div class="card">
             <div class="card-title"><i class="fas fa-chart-bar"></i> Pelatihan per Wilayah</div>
             <?php if (count($wil_labels) > 0): ?>
-            <canvas id="chartWilayah" height="220"></canvas>
+            <div style="position:relative;height:220px">
+            <canvas id="chartWilayah"></canvas>
+            </div>
             <?php else: ?>
             <div class="empty-state"><i class="fas fa-chart-bar"></i><p>Belum ada data</p></div>
             <?php endif; ?>
@@ -220,7 +223,9 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy)}
         <div class="card">
             <div class="card-title"><i class="fas fa-chart-line"></i> Tren per Tahun</div>
             <?php if (count($thn_labels) > 0): ?>
-            <canvas id="chartTahun" height="220"></canvas>
+            <div style="position:relative;height:220px">
+            <canvas id="chartTahun"></canvas>
+            </div>
             <?php else: ?>
             <div class="empty-state"><i class="fas fa-chart-line"></i><p>Belum ada data</p></div>
             <?php endif; ?>
@@ -230,7 +235,9 @@ body{font-family:'Poppins',sans-serif;background:var(--bg);color:var(--navy)}
         <div class="card full">
             <div class="card-title"><i class="fas fa-trophy"></i> Top 10 Jenis Pelatihan</div>
             <?php if (count($jenis_labels) > 0): ?>
-            <canvas id="chartJenis" height="180"></canvas>
+            <div style="position:relative;height:<?= min(count($jenis_labels) * 32 + 20, 300) ?>px">
+            <canvas id="chartJenis"></canvas>
+            </div>
             <?php else: ?>
             <div class="empty-state"><i class="fas fa-trophy"></i><p>Belum ada data</p></div>
             <?php endif; ?>

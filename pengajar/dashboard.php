@@ -37,6 +37,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['catatan_wilayah_id'])
 }
 
 require INCLUDE_PATH . 'sidebar_pengajar.php';
+
+// Ambil berita terbaru untuk slider
+$q_berita_slider = $conn->query("SELECT b.*, u.username FROM berita_pelatihan b LEFT JOIN users u ON b.user_id = u.id ORDER BY b.created_at DESC LIMIT 10");
+$berita_list = [];
+while ($b = $q_berita_slider->fetch_assoc()) $berita_list[] = $b;
+
+// Ambil data wilayah + jumlah dinas per wilayah
+$q_wilayah = $conn->query("
+  SELECT w.id, w.nama_wilayah, COUNT(d.id) AS jml_dinas
+  FROM wilayah w
+  LEFT JOIN dinas d ON d.wilayah_id = w.id
+  GROUP BY w.id
+  ORDER BY w.id
+");
+$wilayah_list = [];
+while ($w = $q_wilayah->fetch_assoc()) $wilayah_list[] = $w;
+
+// Admin stats
+$role = $_SESSION['role'] ?? '';
+if ($role === 'admin') {
+    $total_pengajar  = (int)$conn->query("SELECT COUNT(*) AS c FROM pengajar")->fetch_assoc()['c'];
+    $total_dinas     = (int)$conn->query("SELECT COUNT(*) AS c FROM dinas")->fetch_assoc()['c'];
+    $total_pelatihan = (int)$conn->query("SELECT COUNT(*) AS c FROM identifikasi_pelatihan")->fetch_assoc()['c'];
+    $total_berita    = (int)$conn->query("SELECT COUNT(*) AS c FROM berita_pelatihan")->fetch_assoc()['c'];
+    $total_users     = (int)$conn->query("SELECT COUNT(*) AS c FROM users")->fetch_assoc()['c'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -48,6 +74,8 @@ require INCLUDE_PATH . 'sidebar_pengajar.php';
 <title>Dashboard | Wilayah Kerja Bapekom PU VIII Makassar</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -78,7 +106,148 @@ body {
 }
 @media (max-width: 768px) { .main { padding: 24px 16px 40px; } }
 
-/* ── Identity Banner ── */
+/* ═══ ADMIN DASHBOARD ═══ */
+.admin-greeting {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
+}
+.admin-greeting h2 { font-size: 1.35rem; font-weight: 700; color: var(--navy); margin: 0; }
+.admin-greeting p { font-size: 13px; color: var(--muted); margin: 4px 0 0; }
+.ag-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent); color: #fff;
+  padding: 10px 20px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; text-decoration: none;
+  transition: background 0.2s;
+}
+.ag-btn:hover { background: #2563eb; }
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.astat-card {
+  background: var(--white);
+  border-radius: 14px;
+  padding: 22px 20px;
+  display: flex; flex-direction: column; gap: 14px;
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.astat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+.astat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+}
+.astat-blue::before  { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+.astat-green::before { background: linear-gradient(90deg, #22c55e, #10b981); }
+.astat-amber::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.astat-purple::before{ background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
+.astat-sky::before   { background: linear-gradient(90deg, #06b6d4, #0ea5e9); }
+
+.astat-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: #fff;
+}
+.astat-blue .astat-icon  { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+.astat-green .astat-icon { background: linear-gradient(135deg, #22c55e, #10b981); }
+.astat-amber .astat-icon { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.astat-purple .astat-icon{ background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.astat-sky .astat-icon   { background: linear-gradient(135deg, #06b6d4, #0ea5e9); }
+
+.astat-num { font-size: 1.6rem; font-weight: 800; color: var(--navy); }
+.astat-label { font-size: 11.5px; color: var(--muted); font-weight: 500; }
+.astat-link {
+  font-size: 11.5px; color: var(--accent); font-weight: 600;
+  text-decoration: none; display: flex; align-items: center; gap: 4px;
+  margin-top: auto;
+}
+.astat-link:hover { color: #2563eb; }
+
+.admin-section {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.as-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.as-header h3 {
+  font-size: 15px; font-weight: 700; color: var(--navy);
+  display: flex; align-items: center; gap: 8px; margin: 0;
+}
+.as-more {
+  font-size: 12px; color: var(--accent); font-weight: 600;
+  text-decoration: none; display: flex; align-items: center; gap: 4px;
+}
+
+/* Admin Wilayah Grid */
+.admin-wil-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.awil-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  text-decoration: none; color: inherit;
+  transition: all 0.2s;
+}
+.awil-card:hover { background: #f8fafc; border-color: var(--accent); }
+.awil-marker {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 16px; flex-shrink: 0;
+}
+.awil-name { font-size: 13px; font-weight: 700; color: var(--navy); }
+.awil-meta { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.awil-arrow { color: #cbd5e1; font-size: 12px; margin-left: auto; }
+
+/* Admin Berita List */
+.admin-berita-list { display: flex; flex-direction: column; gap: 0; }
+.ab-item {
+  display: flex; gap: 14px; align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #f1f5f9;
+  text-decoration: none; color: inherit;
+  transition: background 0.2s;
+}
+.ab-item:last-child { border-bottom: none; }
+.ab-item:hover { background: #f8fafc; margin: 0 -24px; padding: 14px 24px; border-radius: 8px; }
+.ab-thumb {
+  width: 56px; height: 56px; border-radius: 10px;
+  overflow: hidden; flex-shrink: 0;
+  background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  color: #94a3b8; font-size: 20px;
+}
+.ab-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ab-title { font-size: 13.5px; font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+.ab-meta {
+  display: flex; gap: 10px; font-size: 11px; color: var(--muted); align-items: center;
+}
+.ab-badge {
+  background: #eff6ff; color: var(--accent);
+  padding: 2px 8px; border-radius: 6px;
+  font-size: 10px; font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .admin-stats { grid-template-columns: repeat(2, 1fr); }
+  .admin-wil-grid { grid-template-columns: 1fr; }
+  .admin-greeting { flex-direction: column; text-align: center; }
+}
+
+/* ═══ Identity Banner (pengajar) ═══ */
 .identity-banner {
   background: linear-gradient(135deg, #1a2744, #2c5282);
   border-radius: 16px;
@@ -166,61 +335,56 @@ body {
   display: flex; align-items: center; gap: 8px;
 }
 
-/* ── Wilayah Grid ── */
-.wilayah-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
+/* ── Peta Wilayah ── */
+.map-container {
+  background: var(--white);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   margin-bottom: 40px;
 }
-
-/* ── Wilayah Card ── */
-.wcard {
-  background: var(--white);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 24px 18px 18px;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
-  transition: box-shadow 0.2s, transform 0.2s;
-  text-decoration: none; color: inherit;
+.map-header {
+  padding: 18px 24px;
+  background: linear-gradient(135deg, #1a2744, #2c5282);
+  color: #fff;
+  display: flex; align-items: center; justify-content: space-between;
 }
-.wcard:hover {
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-  transform: translateY(-3px);
+.map-header h3 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.map-header .map-legend {
+  display: flex; gap: 14px; font-size: 11px; color: rgba(255,255,255,0.7);
 }
-.wcard-icon-wrap {
-  width: 48px; height: 48px; border-radius: 10px;
-  background: #eff6ff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 22px; color: var(--accent);
+.map-legend span { display: flex; align-items: center; gap: 5px; }
+.map-legend .dot-leg {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
 }
-.wcard-name {
-  font-size: 12.5px; font-weight: 700; color: var(--navy);
-  text-align: center; line-height: 1.4;
+#mapWilayah {
+  width: 100%; height: 480px;
+  z-index: 1;
 }
-.wcard-desc {
-  font-size: 11px; color: var(--muted); text-align: center; line-height: 1.5;
+.map-info-bar {
+  padding: 14px 24px;
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 12px; flex-wrap: wrap;
 }
-.wcard-actions {
-  display: flex; gap: 8px; width: 100%; margin-top: auto;
-}
-.wcard-btn {
-  flex: 1; padding: 7px 0;
-  border-radius: 8px; font-size: 11.5px; font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 4px;
+.map-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 14px;
+  font-size: 11.5px; font-weight: 600; color: var(--navy);
+  cursor: pointer; transition: all 0.2s;
   text-decoration: none;
-  transition: background 0.2s;
 }
-.wcard-btn.primary {
+.map-chip:hover { background: #eff6ff; border-color: var(--accent); color: var(--accent); }
+.map-chip .chip-count {
   background: var(--accent); color: #fff;
+  font-size: 10px; padding: 2px 7px; border-radius: 10px;
 }
-.wcard-btn.primary:hover { background: #2563eb; }
-.wcard-btn.secondary {
-  background: #f1f5f9; color: var(--blue);
+@media (max-width: 768px) {
+  #mapWilayah { height: 350px; }
+  .map-header { flex-direction: column; gap: 8px; }
+  .map-info-bar { justify-content: center; }
 }
-.wcard-btn.secondary:hover { background: #e2e8f0; }
 
 /* ── Info Banner ── */
 .info-banner {
@@ -327,6 +491,165 @@ body {
 }
 .loading-bar.active { width: 70%; transition: width 1.5s ease; }
 .loading-bar.done { width: 100%; transition: width 0.2s ease; }
+
+/* ── Berita Slider ── */
+.slider-wrap {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--border);
+  margin-bottom: 40px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+}
+.slider { position: relative; min-height: 340px; }
+.slide {
+  position: absolute; inset: 0;
+  display: flex;
+  opacity: 0;
+  transform: translateX(60px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  pointer-events: none;
+}
+.slide.active {
+  position: relative;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: all;
+}
+.slide.exit-left {
+  opacity: 0;
+  transform: translateX(-60px);
+}
+.slide.exit-right {
+  opacity: 0;
+  transform: translateX(60px);
+}
+.slide-img {
+  width: 45%;
+  min-height: 340px;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+  background: #f1f5f9;
+}
+.slide-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+.slide.active .slide-img img {
+  animation: slideImgZoom 8s ease-out forwards;
+}
+@keyframes slideImgZoom {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+.slide-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 60px; color: #cbd5e1;
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+}
+.slide-body {
+  flex: 1;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.slide-meta {
+  display: flex; gap: 12px; align-items: center;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+.slide-badge {
+  padding: 4px 12px; border-radius: 12px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.badge-info { background: #eff6ff; color: var(--accent); }
+.badge-warn { background: #fffbeb; color: #d97706; }
+.badge-green { background: #ecfdf5; color: #16a34a; }
+.badge-gray { background: #f1f5f9; color: var(--muted); }
+.slide-date, .slide-author {
+  font-size: 11px; color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+}
+.slide-title {
+  font-size: 20px; font-weight: 700; color: var(--navy);
+  line-height: 1.4; margin-bottom: 12px;
+}
+.slide-excerpt {
+  font-size: 13px; color: #64748b; line-height: 1.7;
+  margin-bottom: 20px;
+}
+.slide-read {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--accent); font-size: 13px; font-weight: 600;
+  text-decoration: none; transition: gap 0.2s;
+}
+.slide-read:hover { gap: 10px; }
+
+/* Slider Buttons */
+.slider-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 42px;
+  border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+  color: var(--navy); font-size: 16px;
+  cursor: pointer; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+.slider-btn:hover {
+  background: var(--accent); color: #fff;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 16px rgba(59,130,246,0.3);
+}
+.slider-prev { left: 16px; }
+.slider-next { right: 16px; }
+
+/* Dots */
+.slider-dots {
+  display: flex; gap: 8px;
+  justify-content: center;
+  padding: 16px 0 20px;
+  position: absolute; bottom: 0; left: 0; right: 0;
+}
+.dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.dot.active {
+  background: var(--accent);
+  width: 28px;
+  border-radius: 6px;
+}
+
+/* Counter */
+.slider-counter {
+  position: absolute; top: 16px; right: 16px;
+  background: rgba(0,0,0,0.5);
+  color: #fff; padding: 4px 12px;
+  border-radius: 16px; font-size: 11px; font-weight: 600;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+@media (max-width: 768px) {
+  .slide { flex-direction: column; }
+  .slide-img { width: 100%; min-height: 200px; height: 200px; }
+  .slide-body { padding: 24px 20px; }
+  .slide-title { font-size: 16px; }
+  .slider { min-height: auto; }
+  .slider-btn { width: 36px; height: 36px; font-size: 14px; }
+  .slider-prev { left: 8px; }
+  .slider-next { right: 8px; }
+}
 </style>
 </head>
 <body>
@@ -338,6 +661,123 @@ body {
 <!-- Content -->
 <div class="main">
 <?= breadcrumb([['label' => 'Dashboard']]) ?>
+
+<?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+<!-- ═══════════ ADMIN DASHBOARD ═══════════ -->
+
+  <!-- Greeting -->
+  <div class="admin-greeting">
+    <div>
+      <h2>Selamat Datang, <?= htmlspecialchars($_SESSION['username'] ?? 'Admin') ?> 👋</h2>
+      <p>Ringkasan data sistem MitigaPro &mdash; <?= date('l, d F Y') ?></p>
+    </div>
+    <a href="<?= BASE_URL ?>pengajar/tambah_pelatihan_baru.php" class="ag-btn"><i class="fas fa-plus"></i> Tambah Pelatihan</a>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="admin-stats">
+    <div class="astat-card astat-blue">
+      <div class="astat-icon"><i class="fas fa-user-tie"></i></div>
+      <div class="astat-info">
+        <div class="astat-num"><?= $total_pengajar ?></div>
+        <div class="astat-label">Total Pengajar</div>
+      </div>
+      <a href="<?= BASE_URL ?>pengajar/pengajar.php" class="astat-link">Lihat <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <div class="astat-card astat-green">
+      <div class="astat-icon"><i class="fas fa-building"></i></div>
+      <div class="astat-info">
+        <div class="astat-num"><?= $total_dinas ?></div>
+        <div class="astat-label">Total Dinas</div>
+      </div>
+      <a href="<?= BASE_URL ?>pengajar/dinas.php" class="astat-link">Lihat <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <div class="astat-card astat-amber">
+      <div class="astat-icon"><i class="fas fa-graduation-cap"></i></div>
+      <div class="astat-info">
+        <div class="astat-num"><?= $total_pelatihan ?></div>
+        <div class="astat-label">Identifikasi Pelatihan</div>
+      </div>
+      <a href="<?= BASE_URL ?>pengajar/daftar_pelatihan.php" class="astat-link">Lihat <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <div class="astat-card astat-purple">
+      <div class="astat-icon"><i class="fas fa-newspaper"></i></div>
+      <div class="astat-info">
+        <div class="astat-num"><?= $total_berita ?></div>
+        <div class="astat-label">Berita Pelatihan</div>
+      </div>
+      <a href="<?= BASE_URL ?>pengajar/kelola_berita.php" class="astat-link">Lihat <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <div class="astat-card astat-sky">
+      <div class="astat-icon"><i class="fas fa-users"></i></div>
+      <div class="astat-info">
+        <div class="astat-num"><?= $total_users ?></div>
+        <div class="astat-label">Total Pengguna</div>
+      </div>
+      <a href="<?= BASE_URL ?>pengajar/settings.php" class="astat-link">Kelola <i class="fas fa-arrow-right"></i></a>
+    </div>
+  </div>
+
+  <!-- Wilayah Overview -->
+  <div class="admin-section">
+    <div class="as-header">
+      <h3><i class="fas fa-map-marked-alt"></i> Wilayah Kerja</h3>
+    </div>
+    <div class="admin-wil-grid">
+      <?php
+      $wil_colors = ['#ef4444','#f59e0b','#22c55e','#3b82f6','#8b5cf6','#ec4899','#06b6d4'];
+      foreach ($wilayah_list as $i => $w):
+        $clr = $wil_colors[$i] ?? '#64748b';
+      ?>
+      <a href="wilayah.php?id=<?= (int)$w['id'] ?>" class="awil-card">
+        <div class="awil-marker" style="background:<?= $clr ?>"><i class="fas fa-location-dot"></i></div>
+        <div class="awil-body">
+          <div class="awil-name"><?= htmlspecialchars(str_replace('Wilayah Kerja ', '', $w['nama_wilayah'])) ?></div>
+          <div class="awil-meta"><i class="fas fa-building"></i> <?= (int)$w['jml_dinas'] ?> dinas</div>
+        </div>
+        <i class="fas fa-chevron-right awil-arrow"></i>
+      </a>
+      <?php endforeach; ?>
+    </div>
+  </div>
+
+  <!-- Berita Terbaru (compact list) -->
+  <div class="admin-section">
+    <div class="as-header">
+      <h3><i class="fas fa-newspaper"></i> Berita Terbaru</h3>
+      <a href="<?= BASE_URL ?>pengajar/kelola_berita.php" class="as-more">Kelola Berita <i class="fas fa-arrow-right"></i></a>
+    </div>
+    <?php if (count($berita_list) > 0): ?>
+    <div class="admin-berita-list">
+      <?php foreach (array_slice($berita_list, 0, 5) as $b): ?>
+      <a href="detail_berita.php?id=<?= (int)$b['id'] ?>" class="ab-item">
+        <div class="ab-thumb">
+          <?php if ($b['gambar']): ?>
+            <img src="<?= BASE_URL ?>uploads/berita/<?= htmlspecialchars($b['gambar']) ?>" alt="">
+          <?php else: ?>
+            <i class="fas fa-newspaper"></i>
+          <?php endif; ?>
+        </div>
+        <div class="ab-body">
+          <div class="ab-title"><?= htmlspecialchars($b['judul']) ?></div>
+          <div class="ab-meta">
+            <span class="ab-badge"><?= htmlspecialchars($b['kategori'] ?: 'Umum') ?></span>
+            <span><i class="fas fa-calendar-alt"></i> <?= date('d M Y', strtotime($b['created_at'])) ?></span>
+            <?php if ($b['username']): ?>
+            <span><i class="fas fa-user"></i> <?= htmlspecialchars($b['username']) ?></span>
+            <?php endif; ?>
+          </div>
+        </div>
+      </a>
+      <?php endforeach; ?>
+    </div>
+    <?php else: ?>
+    <div class="empty"><i class="fas fa-newspaper"></i><p>Belum ada berita.</p></div>
+    <?php endif; ?>
+  </div>
+
+<?php else: ?>
+<!-- ═══════════ PENGAJAR DASHBOARD ═══════════ -->
 
   <!-- Identity Banner -->
   <div class="identity-banner">
@@ -381,48 +821,99 @@ body {
   </div>
   <?php endif; ?>
 
-  <!-- Wilayah Grid -->
-  <div class="section-title"><i class="fas fa-layer-group"></i> Pilih Wilayah</div>
+  <!-- Berita Slider -->
+  <div class="section-title"><i class="fas fa-newspaper"></i> Berita & Informasi Terbaru</div>
 
-  <div class="wilayah-grid">
-    <?php
-    $wilayah_list = [
-      [1, "Sulawesi Selatan",  "fa-location-dot"],
-      [2, "Sulawesi Barat",    "fa-location-dot"],
-      [3, "Sulawesi Tengah",   "fa-location-dot"],
-      [4, "Sulawesi Utara",    "fa-location-dot"],
-      [5, "Sulawesi Tenggara", "fa-location-dot"],
-      [6, "Gorontalo",         "fa-location-dot"],
-      [7, "Maluku Utara",      "fa-location-dot"],
-    ];
-    foreach ($wilayah_list as [$id, $nama, $icon]):
-    ?>
-    <div class="wcard">
-      <div class="wcard-icon-wrap"><i class="fas <?= $icon ?>"></i></div>
-      <div class="wcard-name">WILAYAH KERJA<br><?= strtoupper($nama) ?></div>
-      <div class="wcard-desc">Data dinas &amp; identifikasi pelatihan di wilayah ini.</div>
-      <div class="wcard-actions">
-        <a href="wilayah.php?id=<?= $id ?>" class="wcard-btn primary" onclick="leavePage(event, this.href)">
-          <i class="fas fa-eye"></i> Lihat
+  <?php if (count($berita_list) > 0): ?>
+  <div class="slider-wrap">
+    <div class="slider" id="beritaSlider">
+      <?php foreach ($berita_list as $i => $b): ?>
+      <div class="slide <?= $i === 0 ? 'active' : '' ?>">
+        <div class="slide-img">
+          <?php if ($b['gambar']): ?>
+            <img src="<?= BASE_URL ?>uploads/berita/<?= htmlspecialchars($b['gambar']) ?>" alt="">
+          <?php else: ?>
+            <div class="slide-placeholder"><i class="fas fa-newspaper"></i></div>
+          <?php endif; ?>
+        </div>
+        <div class="slide-body">
+          <div class="slide-meta">
+            <?php
+              $badge_class = match($b['kategori'] ?? '') {
+                  'Informasi'  => 'badge-info',
+                  'Pengumuman' => 'badge-warn',
+                  'Jadwal'     => 'badge-green',
+                  default      => 'badge-gray',
+              };
+            ?>
+            <span class="slide-badge <?= $badge_class ?>"><?= htmlspecialchars($b['kategori'] ?: 'Umum') ?></span>
+            <span class="slide-date"><i class="fas fa-calendar-alt"></i> <?= date('d M Y', strtotime($b['created_at'])) ?></span>
+            <?php if ($b['username']): ?>
+            <span class="slide-author"><i class="fas fa-user"></i> <?= htmlspecialchars($b['username']) ?></span>
+            <?php endif; ?>
+          </div>
+          <h3 class="slide-title"><?= htmlspecialchars($b['judul']) ?></h3>
+          <p class="slide-excerpt"><?= htmlspecialchars(mb_strimwidth(strip_tags($b['isi']), 0, 200, '...')) ?></p>
+          <a href="detail_berita.php?id=<?= (int)$b['id'] ?>" class="slide-read">Baca Selengkapnya <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+
+    <!-- Controls -->
+    <button class="slider-btn slider-prev" id="sliderPrev"><i class="fas fa-chevron-left"></i></button>
+    <button class="slider-btn slider-next" id="sliderNext"><i class="fas fa-chevron-right"></i></button>
+
+    <!-- Dots -->
+    <div class="slider-dots" id="sliderDots">
+      <?php foreach ($berita_list as $i => $b): ?>
+      <span class="dot <?= $i === 0 ? 'active' : '' ?>" data-index="<?= $i ?>"></span>
+      <?php endforeach; ?>
+    </div>
+
+    <!-- Counter -->
+    <div class="slider-counter">
+      <span id="sliderCurrent">1</span> / <?= count($berita_list) ?>
+    </div>
+  </div>
+  <?php else: ?>
+  <div class="empty">
+    <i class="fas fa-newspaper"></i>
+    <p>Belum ada berita pelatihan.</p>
+  </div>
+  <?php endif; ?>
+
+  <?php if (($_SESSION['role'] ?? '') === 'pengajar'): ?>
+  <!-- Peta Wilayah Kerja -->
+  <div id="wilayah" style="margin-top:40px">
+    <div class="map-container">
+      <div class="map-header">
+        <h3><i class="fas fa-map-marked-alt"></i> Peta Wilayah Kerja</h3>
+        <div class="map-legend">
+          <span><span class="dot-leg" style="background:#ef4444"></span> Sulawesi Selatan</span>
+          <span><span class="dot-leg" style="background:#f59e0b"></span> Sulawesi Barat</span>
+          <span><span class="dot-leg" style="background:#22c55e"></span> Sulawesi Tengah</span>
+          <span><span class="dot-leg" style="background:#3b82f6"></span> Sulawesi Utara</span>
+          <span><span class="dot-leg" style="background:#8b5cf6"></span> Sulawesi Tenggara</span>
+          <span><span class="dot-leg" style="background:#ec4899"></span> Gorontalo</span>
+          <span><span class="dot-leg" style="background:#06b6d4"></span> Maluku Utara</span>
+        </div>
+      </div>
+      <div id="mapWilayah"></div>
+      <div class="map-info-bar">
+        <?php foreach ($wilayah_list as $w): ?>
+        <a href="wilayah.php?id=<?= (int)$w['id'] ?>" class="map-chip">
+          <i class="fas fa-location-dot" style="color:var(--accent)"></i>
+          <?= htmlspecialchars(str_replace('Wilayah Kerja ', '', $w['nama_wilayah'])) ?>
+          <span class="chip-count"><?= (int)$w['jml_dinas'] ?></span>
         </a>
-        <?php if (($_SESSION['role'] ?? '') !== 'tamu'): ?>
-        <button class="wcard-btn secondary" onclick="openModal(<?= $id ?>, '<?= htmlspecialchars($nama) ?>')">
-          <i class="fas fa-pen"></i> Catat
-        </button>
-        <?php endif; ?>
+        <?php endforeach; ?>
       </div>
     </div>
-    <?php endforeach; ?>
   </div>
+  <?php endif; ?>
 
-  <!-- Info Banner -->
-  <div class="info-banner">
-    <div class="info-banner-icon"><i class="fas fa-bullhorn"></i></div>
-    <div>
-      <h4>Informasi Sistem</h4>
-      <p>Pastikan data dinas dan pelatihan selalu diperbarui agar proses penyusunan program berjalan optimal. Gunakan tombol <strong>Catat</strong> untuk menambahkan catatan wilayah secara langsung.</p>
-    </div>
-  </div>
+<?php endif; /* admin vs pengajar */ ?>
 
 </div>
 
@@ -525,6 +1016,188 @@ if (btnKeluar) btnKeluar.addEventListener('click', function(e) {
     }, 400);
   }
 });
+
+/* ── Berita Slider ── */
+(function() {
+  const slides = document.querySelectorAll('.slide');
+  const dots   = document.querySelectorAll('.dot');
+  const counter = document.getElementById('sliderCurrent');
+  const prevBtn = document.getElementById('sliderPrev');
+  const nextBtn = document.getElementById('sliderNext');
+
+  if (!slides.length) return;
+
+  let current = 0;
+  let autoTimer = null;
+  let isAnimating = false;
+
+  function goTo(index, direction) {
+    if (isAnimating || index === current) return;
+    isAnimating = true;
+
+    const oldSlide = slides[current];
+    const newSlide = slides[index];
+
+    // Exit direction
+    oldSlide.classList.remove('active');
+    oldSlide.classList.add(direction === 'next' ? 'exit-left' : 'exit-right');
+
+    // Enter
+    newSlide.style.transform = direction === 'next' ? 'translateX(60px)' : 'translateX(-60px)';
+    newSlide.classList.add('active');
+
+    // Update dots
+    dots.forEach(d => d.classList.remove('active'));
+    if (dots[index]) dots[index].classList.add('active');
+
+    // Update counter
+    if (counter) counter.textContent = index + 1;
+
+    current = index;
+
+    setTimeout(() => {
+      oldSlide.classList.remove('exit-left', 'exit-right');
+      isAnimating = false;
+    }, 550);
+  }
+
+  function next() {
+    goTo((current + 1) % slides.length, 'next');
+  }
+
+  function prev() {
+    goTo((current - 1 + slides.length) % slides.length, 'prev');
+  }
+
+  // Auto-play
+  function startAuto() {
+    stopAuto();
+    autoTimer = setInterval(next, 5000);
+  }
+
+  function stopAuto() {
+    if (autoTimer) clearInterval(autoTimer);
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', () => { stopAuto(); prev(); startAuto(); });
+  if (nextBtn) nextBtn.addEventListener('click', () => { stopAuto(); next(); startAuto(); });
+
+  dots.forEach(dot => {
+    dot.addEventListener('click', () => {
+      const idx = parseInt(dot.dataset.index, 10);
+      stopAuto();
+      goTo(idx, idx > current ? 'next' : 'prev');
+      startAuto();
+    });
+  });
+
+  // Swipe support
+  const slider = document.getElementById('beritaSlider');
+  if (slider) {
+    let startX = 0;
+    slider.addEventListener('touchstart', e => { startX = e.touches[0].clientX; stopAuto(); }, {passive:true});
+    slider.addEventListener('touchend', e => {
+      const diff = startX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) {
+        diff > 0 ? next() : prev();
+      }
+      startAuto();
+    }, {passive:true});
+  }
+
+  // Pause on hover
+  const wrap = document.querySelector('.slider-wrap');
+  if (wrap) {
+    wrap.addEventListener('mouseenter', stopAuto);
+    wrap.addEventListener('mouseleave', startAuto);
+  }
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') { stopAuto(); prev(); startAuto(); }
+    if (e.key === 'ArrowRight') { stopAuto(); next(); startAuto(); }
+  });
+
+  startAuto();
+})();
+
+/* ── Leaflet Map Wilayah ── */
+(function() {
+  const mapEl = document.getElementById('mapWilayah');
+  if (!mapEl) return;
+
+  const map = L.map('mapWilayah', {
+    center: [-1.5, 123.5],
+    zoom: 6,
+    zoomControl: true,
+    scrollWheelZoom: true
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap',
+    maxZoom: 18
+  }).addTo(map);
+
+  // Data wilayah: id, nama, koordinat, warna, jumlah dinas
+  const wilayahData = [
+    { id: 1, nama: 'Sulawesi Selatan',   lat: -3.67,  lng: 119.97, color: '#ef4444', dinas: <?= (int)($wilayah_list[0]['jml_dinas'] ?? 0) ?> },
+    { id: 2, nama: 'Sulawesi Barat',     lat: -2.84,  lng: 119.23, color: '#f59e0b', dinas: <?= (int)($wilayah_list[1]['jml_dinas'] ?? 0) ?> },
+    { id: 3, nama: 'Sulawesi Tengah',    lat: -1.43,  lng: 121.45, color: '#22c55e', dinas: <?= (int)($wilayah_list[2]['jml_dinas'] ?? 0) ?> },
+    { id: 4, nama: 'Sulawesi Utara',     lat:  1.49,  lng: 124.84, color: '#3b82f6', dinas: <?= (int)($wilayah_list[3]['jml_dinas'] ?? 0) ?> },
+    { id: 5, nama: 'Sulawesi Tenggara',  lat: -3.97,  lng: 122.51, color: '#8b5cf6', dinas: <?= (int)($wilayah_list[4]['jml_dinas'] ?? 0) ?> },
+    { id: 6, nama: 'Gorontalo',          lat:  0.54,  lng: 123.06, color: '#ec4899', dinas: <?= (int)($wilayah_list[5]['jml_dinas'] ?? 0) ?> },
+    { id: 7, nama: 'Maluku Utara',       lat:  1.57,  lng: 127.81, color: '#06b6d4', dinas: <?= (int)($wilayah_list[6]['jml_dinas'] ?? 0) ?> }
+  ];
+
+  wilayahData.forEach(w => {
+    const icon = L.divIcon({
+      className: '',
+      html: '<div style="background:' + w.color + ';width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700">' + w.id + '</div>',
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    const marker = L.marker([w.lat, w.lng], { icon: icon }).addTo(map);
+
+    marker.bindPopup(
+      '<div style="font-family:Poppins,sans-serif;min-width:180px">' +
+        '<div style="font-size:14px;font-weight:700;color:#1a2744;margin-bottom:6px">' +
+          '<i class="fas fa-location-dot" style="color:' + w.color + '"></i> ' + w.nama +
+        '</div>' +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:10px">' +
+          '<i class="fas fa-building"></i> ' + w.dinas + ' dinas terdaftar' +
+        '</div>' +
+        '<a href="wilayah.php?id=' + w.id + '" style="display:inline-flex;align-items:center;gap:5px;background:#3b82f6;color:#fff;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;text-decoration:none">' +
+          '<i class="fas fa-eye"></i> Lihat Detail' +
+        '</a>' +
+      '</div>',
+      { closeButton: true, maxWidth: 250 }
+    );
+
+    marker.bindTooltip(w.nama, {
+      permanent: true,
+      direction: 'bottom',
+      offset: [0, 14],
+      className: 'wil-tooltip'
+    });
+  });
+
+  // Style tooltip
+  const tooltipStyle = document.createElement('style');
+  tooltipStyle.textContent = '.wil-tooltip{background:#1a2744;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:10px;font-weight:600;font-family:Poppins,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.2)}.wil-tooltip::before{border-bottom-color:#1a2744!important}';
+  document.head.appendChild(tooltipStyle);
+
+  // Fix map size setelah container terlihat
+  setTimeout(() => map.invalidateSize(), 300);
+
+  // Jika URL ada #wilayah, scroll ke sana
+  if (window.location.hash === '#wilayah') {
+    setTimeout(() => {
+      document.getElementById('wilayah')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setTimeout(() => map.invalidateSize(), 500);
+    }, 400);
+  }
+})();
 </script>
 </div><!-- /main-content -->
 </body>
